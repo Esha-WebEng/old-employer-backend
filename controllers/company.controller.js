@@ -116,11 +116,35 @@ const getAllCompanies = async (req, res) => {
   }
 };
 
+const deleteCompanyById = async (req, res) => {
+  const { query: { id } } = req;
+
+  try {
+    if (!id) {
+      return res.status(400).json({ message: 'Invalid company ID' });
+    }
+
+    const deletedCount = await company.destroy({
+      where: { id }
+    });
+    if (deletedCount === 0) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    res.status(200).json({ message: 'Company deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting company:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
 module.exports = {
   createCompany,
   updateCompany,
   searchCompany,
   getSingleCompany,
   companyVerfiy,
-  getAllCompanies
+  getAllCompanies,
+  deleteCompanyById
 };

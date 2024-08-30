@@ -18,7 +18,13 @@ router.route("/user/all-users").get(auth(), userController.getAllUsers);
 router.route("/user/search").get(auth(), userController.searchUsers);
 router.route("/user/user-details").get(auth(), userController.getUserDetails);
 router.route("/user/delete").get(auth(), userController.deleteUserById);
-router.route("/user/permissions").get(auth(), userController.grantUserPermissions);
+
+router
+  .route("/user/permissions")
+  .post(auth(), userController.grantUserPermissions)
+  .put(auth(), userController.updateUserPermissions);
+
+router.route("/user/getpermissions").get(auth(), userController.getPermissions)
 
 // Experience Crud operations
 router

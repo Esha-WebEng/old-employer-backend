@@ -1,4 +1,4 @@
-const { User, Profile, Experience, Education, Projects } = require("../db");
+const { User, Profile, Experience, Education, Projects, Permissions } = require("../db");
 const { Op } = require("sequelize");
 const { sequelize } = require("../db");
 
@@ -161,7 +161,7 @@ const searchUsers = async (req, res) => {
           attributes: { exclude: ["UserId", "createdAt", "updatedAt"] },
           where: {
             [Op.or]: [
-              { skills: { [Op.regexp]: `^${query.skills}` } }, // Filter skills in Profile model
+              { skills: { [Op.regexp]: `^${query.skills}` } }, 
               sequelize.literal(
                 `MATCH (skills) AGAINST (${sequelize.escape(query.searchText)} IN NATURAL LANGUAGE MODE)`
               ),
@@ -183,9 +183,9 @@ const searchUsers = async (req, res) => {
       ],
       where: {
         [Op.or]: [
-          { country: query.country }, // Filtering by country in User model
-          { city: query.city },       // Filtering by city in User model
-          { industry: { [Op.regexp]: `^${query.industry}` } }, // Filtering by industry in User model
+          { country: query.country }, 
+          { city: query.city },       
+          { industry: { [Op.regexp]: `^${query.industry}` } }, 
           sequelize.literal(
             `MATCH (firstName, lastName, country, city, industry) AGAINST (${sequelize.escape(
               query.searchText
@@ -225,7 +225,7 @@ const getUserDetails = async (req, res) => {
         },
         {
           model: Projects,
-          attributes: { exclude: ["UserId", "createdAt", "updatedAt"] },  // Corrected here as well
+          attributes: { exclude: ["UserId", "createdAt", "updatedAt"] },  
         },
       ],
     });
@@ -233,7 +233,7 @@ const getUserDetails = async (req, res) => {
     if (!getUser) throw new Error("User not Found");
     res.status(200).send(getUser);
   } catch (err) {
-    console.error("Error fetching user details:", err);  // Log the full error object
+    console.error("Error fetching user details:", err); 
     res.status(404).send(err.message);
   }
 };
@@ -293,29 +293,75 @@ const deleteUserById = async (req, res) => {
 };
 
 const grantUserPermissions = async (req, res) => {
-  const { role, permissions } = req.body;
-  
   try {
-      // Validate input data
-      if (!role || typeof role !== 'string') {
-          return res.status(400).json({ error: 'Invalid role' });
-      }
-      
-      // Ensure user has rights to update roles and permissions
-      if (!userHasPermission(req.user, 'updateRolePermissions')) {
-          return res.status(403).json({ error: 'Forbidden' });
-      }
+    const { role, permissions } = req.body;
+    if (!role || !permissions) {
+      return res.status(400).json({ message: "Role and permissions are required." });
+    }
+    const newPermission = await Permissions.create({
+      role,
+      permissions,
+    });
+    return res.status(201).json({
+      message: "Permission entry created successfully",
+      data: newPermission,
+    });
 
-      // Update role and permissions in the database
-      await updateUserRoleAndPermissions(req.user.id, role, permissions);
-      
-      res.status(200).json({ message: 'Role and permissions updated successfully' });
-  } catch (err) {
-      console.error('Error updating role and permissions:', err);
-      res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    console.error("Error adding permission entry:", error);
+    return res.status(500).json({
+      message: "An error occurred while adding the permission entry",
+      error: error.message,
+    });
   }
 };
 
+const updateUserPermissions = async (req, res) => {
+  try {
+    const { role, permissions } = req.body;
+
+    if (!role || !permissions) {
+      return res.status(400).json({ message: "Role and permissions are required." });
+    }
+
+    const updatedPermission = await Permissions.update(
+      { permissions },
+      { where: { role } }
+    );
+
+    if (updatedPermission[0] === 0) {
+      return res.status(404).json({ message: "Permission entry not found." });
+    }
+
+    return res.status(200).json({
+      message: "Permission entry updated successfully",
+    });
+
+  } catch (error) {
+    console.error("Error updating permission entry:", error);
+    return res.status(500).json({
+      message: "An error occurred while updating the permission entry",
+      error: error.message,
+    });
+  }
+};
+
+const getPermissions = async (req, res) => {
+  try {
+    const permissions = await Permissions.findAll({
+      attributes: ['role', 'permissions']
+    });
+
+    if (!permissions || permissions.length === 0) {
+      return res.status(404).json({ message: "No permissions found." });
+    }
+
+    res.status(200).json(permissions);
+  } catch (err) {
+    console.error("Error fetching permissions:", err);
+    res.status(500).json({ message: "An error occurred while fetching permissions." });
+  }
+};
 
 module.exports = {
   getCurrentUser,
@@ -330,5 +376,7 @@ module.exports = {
   getUserDetails,
   getAllUsers,
   deleteUserById,
-  grantUserPermissions
+  grantUserPermissions,
+  getPermissions,
+  updateUserPermissions
 };

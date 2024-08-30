@@ -21,6 +21,7 @@ router
     validate(companyValidation.updateCompany),
     companyController.updateCompany
   )
+router.route("/company/delete").get(auth(), companyController.deleteCompanyById);
 router
   .route("/company/search")
   .get(
