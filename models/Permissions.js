@@ -1,30 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { genderEnum, userRoles, permissionCategories, rolePermissions } = require("../enums");
-
-// Helper function to extract all unique permissions
-const getAllPermissions = (rolePermissions) => {
-  const roleSet = new Set();
-  Object.values(rolePermissions).forEach((role) => {
-    Object.values(role).forEach((perms) => {
-      perms.forEach((perm) => permissionsSet.add(perm));
-    });
-  });
-  const categorySet = new Set();
-  Object.values(rolePermissions).forEach((role) => {
-    Object.values(role).forEach((perms) => {
-      perms.forEach((perm) => permissionsSet.add(perm));
-    });
-  });
-  const permissionsSet = new Set();
-  Object.values(rolePermissions).forEach((role) => {
-    Object.values(role).forEach((perms) => {
-      perms.forEach((perm) => permissionsSet.add(perm));
-    });
-  });
-  return Array.from(permissionsSet);
-};
-
-const allPermissions = getAllPermissions(rolePermissions);
+const { userRoles } = require("../enums");
 
 module.exports.PermissionModal = (sequelize) => {
   return sequelize.define(
@@ -33,20 +8,35 @@ module.exports.PermissionModal = (sequelize) => {
       id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        allowNull: false,
         autoIncrement: true,
+        allowNull: false,
       },
       role: {
-        type: DataTypes.ENUM(...roleSet),
+        type: DataTypes.ENUM("user", userRoles),
         allowNull: false,
       },
-      category: {
-        type: DataTypes.ENUM(...Object.keys(categorySet)), // Flatten the keys
-        allowNull: false,
-      },
+
       permissions: {
-        type: DataTypes.ENUM(...permissionsSet), // Use extracted permissions
+        type: DataTypes.JSON,
         allowNull: false,
+        validate: {
+          isValidPermissions(value) {
+            if (!Array.isArray(value)) {
+              throw new Error("Permissions must be an array.");
+            }
+            value.forEach((permissionObj) => {
+              if (
+                typeof permissionObj !== "object" ||
+                !permissionObj.permissionCategory ||
+                !Array.isArray(permissionObj.permissionsValue)
+              ) {
+                throw new Error(
+                  "Each permission must have a permissionCategory and an array of permissionsValue."
+                );
+              }
+            });
+          },
+        },
       },
     },
     {
